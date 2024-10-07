@@ -1,0 +1,20 @@
+{
+  "name": "app-movil",
+  "main": "app/app.js",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@nativescript/core": "~8.8.0",
+    "@nativescript/theme": "^3.1.0",
+    "app-movil": "file:",
+    "axios": "^1.7.7",
+    "nativescript-drop-down": "^6.0.2",
+    "nativescript-vue": "~2.9.3",
+    "vuex": "^4.1.0"
+  },
+  "devDependencies": {
+    "@nativescript/android": "8.8.5",
+    "@nativescript/webpack": "~5.0.0",
+    "nativescript-vue-template-compiler": "~2.9.3"
+  }
+}
