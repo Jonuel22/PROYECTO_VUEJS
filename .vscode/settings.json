@@ -5,6 +5,8 @@
         "mp.openapi.schema.*",
         "kafka-streams.*",
         "camel.*",
-        "quarkus.transaction-manager.enable-default"
-    ]
+        "quarkus.transaction-manager.enable-default",
+        "vertx-api/mp-rest/url"
+    ],
+    "java.compile.nullAnalysis.mode": "automatic"
 }

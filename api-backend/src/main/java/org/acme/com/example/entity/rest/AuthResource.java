@@ -11,6 +11,9 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Path("/login")
 @Produces(MediaType.APPLICATION_JSON)
@@ -19,6 +22,9 @@ public class AuthResource {
 
     @Inject
     UsuarioRepository usuarioRepository;
+
+    // Crear un pool de hilos para manejar procesos en paralelo
+    private static final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
     @POST
     public Response login(Credentials credentials) {
@@ -57,19 +63,24 @@ public class AuthResource {
         // Si las credenciales son válidas, devolver la información del usuario sin token
         UserInfo user = new UserInfo(usuario.getNombre(), usuario.getCorreo());
 
-        // Llamar a la API de Vert.x para enviar la señal de notificación push
-        sendNotificationToVertx(usuario.getCorreo());
+        // Ejecutar el envío de la notificación a Vert.x de manera asíncrona usando un CompletableFuture
+        CompletableFuture.runAsync(() -> sendNotificationToVertx(usuario.getCorreo()), executorService)
+            .exceptionally(ex -> {
+                // Manejar cualquier excepción que ocurra durante el proceso asíncrono
+                ex.printStackTrace();
+                return null;
+            });
 
         return Response.ok()
             .entity(user)  // Devolver solo los datos del usuario
             .build();
     }
 
-    // Método para enviar la señal a Vert.x
+    // Método para enviar la señal a Vert.x en Azure
     private void sendNotificationToVertx(String email) {
         try {
-            // URL de la API de Vert.x
-            URL url = new URL("http://localhost:8081/sendNotification");  // Cambia la URL según la configuración de tu API de Vert.x
+            // URL de la API de Vert.x en Azure
+            URL url = new URL("https://apivert-d3h7d9hkc'faughtf.westus2-01.azurewebsites.net/sendNotification");
 
             // Crear conexión HTTP
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();

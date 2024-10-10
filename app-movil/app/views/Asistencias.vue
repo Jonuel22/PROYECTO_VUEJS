@@ -1,55 +1,44 @@
 <template>
   <Page>
     <ActionBar title="Gestión de Asistencias" />
-    <StackLayout>
-      <!-- Botón para cargar asistencias y empleados -->
-      <Button text="Cargar Asistencias y Empleados" @tap="loadData" />
-
+    
+    <FlexboxLayout flexDirection="column" height="100%">
       <!-- Mostrar la lista de asistencias -->
-      <ListView v-if="asistencias.length" :items="asistencias">
+      <ListView v-if="asistencias.length" :items="asistencias" class="list-container" flexGrow="1">
         <v-template v-for="asistencia in asistencias" :key="asistencia.id">
-          <StackLayout>
-            <Label :text="'Empleado: ' + asistencia.empleado.nombre" />
-            <Label :text="'Fecha: ' + asistencia.fecha" />
-            <Label :text="'Hora de Entrada: ' + asistencia.horaEntrada" />
-            <Label :text="'Hora de Salida: ' + asistencia.horaSalida" />
-            
-            <!-- Botones para editar y eliminar asistencia -->
-            <Button text="Editar" @tap="editarAsistencia(asistencia)" />
-            <Button text="Eliminar" @tap="eliminarAsistencia(asistencia.id)" />
+          <StackLayout class="list-item">
+            <Label :text="'Empleado: ' + asistencia.empleado.nombre" class="list-item-text" />
+            <Label :text="'Fecha: ' + asistencia.fecha" class="list-item-text" />
+            <Label :text="'Hora de Entrada: ' + asistencia.horaEntrada" class="list-item-text" />
+            <Label :text="'Hora de Salida: ' + asistencia.horaSalida" class="list-item-text" />
           </StackLayout>
         </v-template>
       </ListView>
-
-      <!-- Formulario para agregar o editar asistencia -->
-      <StackLayout v-if="isEditing || isAdding">
-        <!-- Usamos el componente Picker correctamente -->
-        <Picker v-model="empleadoSeleccionado" :items="empleados" itemDisplay="nombre" />
-        <DatePicker v-model="fecha" />
-        <TimePicker v-model="horaEntrada" />
-        <TimePicker v-model="horaSalida" />
-        <Button text="Guardar Asistencia" @tap="guardarAsistencia" />
+      
+      <!-- Botones para agregar, editar y eliminar asistencia -->
+      <StackLayout class="button-group" flexShrink="0">
+        <Button text="Agregar Asistencia" class="primary-button" @tap="abrirModalAgregar" />
+        <Button text="Editar Asistencia" class="secondary-button" @tap="abrirModalEditarSeleccionada" />
+        <Button text="Eliminar Asistencia" class="delete-button" @tap="eliminarAsistenciaSeleccionada" />
       </StackLayout>
-
-      <!-- Botón para mostrar el formulario de agregar asistencia -->
-      <Button text="Agregar Asistencia" v-if="!isEditing && !isAdding" @tap="agregarNuevaAsistencia" />
-    </StackLayout>
+    </FlexboxLayout>
   </Page>
 </template>
 
 <script>
+import AgregarAsistenciaModal from './AgregarAsistenciaModal.vue';
+import EditarAsistenciaModal from './EditarAsistenciaModal.vue';
+
 export default {
+  components: {
+    AgregarAsistenciaModal,
+    EditarAsistenciaModal
+  },
   data() {
     return {
       asistencias: [], // Lista de asistencias
       empleados: [], // Lista de empleados cargada desde el servidor
-      empleadoSeleccionado: null, // Empleado seleccionado para el formulario
-      fecha: new Date(), // Fecha de asistencia
-      horaEntrada: new Date(), // Hora de entrada
-      horaSalida: new Date(), // Hora de salida
-      isEditing: false, // Bandera para saber si estamos editando
-      isAdding: false, // Bandera para saber si estamos agregando
-      asistenciaEditada: null, // Asistencia que se está editando
+      asistenciaSeleccionada: null, // Para manejar la asistencia seleccionada
     };
   },
   methods: {
@@ -73,75 +62,79 @@ export default {
       }
     },
 
-    // Agregar nueva asistencia
-    agregarNuevaAsistencia() {
-      this.isAdding = true;
-      this.isEditing = false;
-      this.empleadoSeleccionado = null;
-      this.fecha = new Date();
-      this.horaEntrada = new Date();
-      this.horaSalida = new Date();
-    },
+    // Abrir modal para agregar una asistencia
+    async abrirModalAgregar() {
+      const result = await this.$showModal(AgregarAsistenciaModal, {
+        props: { empleados: this.empleados },
+        fullscreen: true
+      });
 
-    // Editar una asistencia existente
-    editarAsistencia(asistencia) {
-      this.isEditing = true;
-      this.isAdding = false;
-      this.asistenciaEditada = asistencia;
-      this.empleadoSeleccionado = asistencia.empleado;
-      this.fecha = new Date(asistencia.fecha);
-      this.horaEntrada = new Date(asistencia.horaEntrada);
-      this.horaSalida = new Date(asistencia.horaSalida);
-    },
-
-    // Guardar asistencia (nuevo o editado)
-    async guardarAsistencia() {
-      const url = this.isEditing
-        ? `http://10.0.2.2:8080/asistencias/${this.asistenciaEditada.id}`
-        : 'http://10.0.2.2:8080/asistencias';
-      const method = this.isEditing ? 'PUT' : 'POST';
-
-      try {
-        const response = await fetch(url, {
-          method,
-          headers: {
-            'Content-Type': 'application/json',
-          },
+      if (result && result.empleado && result.empleado.id) {
+        // Aquí puedes hacer la lógica para agregar la asistencia
+        const response = await fetch('http://10.0.2.2:8080/asistencias', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            empleado: this.empleadoSeleccionado,
-            fecha: this.fecha.toISOString().split('T')[0], // Formato de fecha YYYY-MM-DD
-            horaEntrada: this.horaEntrada.toTimeString().split(' ')[0], // Formato de hora HH:MM:SS
-            horaSalida: this.horaSalida.toTimeString().split(' ')[0], // Formato de hora HH:MM:SS
-          }),
+            empleado: { id: result.empleado.id },
+            fecha: result.fecha.toISOString().split('T')[0],
+            horaEntrada: result.horaEntrada.toTimeString().split(' ')[0],
+            horaSalida: result.horaSalida.toTimeString().split(' ')[0],
+          })
         });
-
-        if (response.ok) {
-          alert(this.isEditing ? 'Asistencia actualizada' : 'Asistencia agregada');
-          this.isEditing = false;
-          this.isAdding = false;
-          this.loadData(); // Recargar la lista de asistencias
-        } else {
-          alert('Error al guardar la asistencia');
-        }
-      } catch (error) {
-        console.error('Error al guardar la asistencia:', error);
-        alert('Hubo un problema al guardar la asistencia.');
+        if (response.ok) this.loadData();
+      } else {
+        alert('Error: El empleado no es válido.');
       }
     },
 
-    // Eliminar una asistencia
-    async eliminarAsistencia(id) {
+    // Abrir modal para editar la asistencia seleccionada
+    async abrirModalEditarSeleccionada() {
+      if (!this.asistenciaSeleccionada) {
+        alert('Por favor selecciona una asistencia');
+        return;
+      }
+      
+      const result = await this.$showModal(EditarAsistenciaModal, {
+        props: { asistencia: this.asistenciaSeleccionada, empleados: this.empleados },
+        fullscreen: true
+      });
+
+      if (result && result.empleado && result.empleado.id) {
+        const url = `http://10.0.2.2:8080/asistencias/${this.asistenciaSeleccionada.id}`;
+        const response = await fetch(url, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            empleado: { id: result.empleado.id },
+            fecha: result.fecha.toISOString().split('T')[0],
+            horaEntrada: result.horaEntrada.toTimeString().split(' ')[0],
+            horaSalida: result.horaSalida.toTimeString().split(' ')[0],
+          })
+        });
+        if (response.ok) this.loadData();
+      } else {
+        alert('Error: El empleado no es válido.');
+      }
+    },
+
+    // Eliminar la asistencia seleccionada
+    async eliminarAsistenciaSeleccionada() {
+      if (!this.asistenciaSeleccionada) {
+        alert('Por favor selecciona una asistencia');
+        return;
+      }
+
       const confirmDelete = confirm('¿Estás seguro de eliminar esta asistencia?');
       if (!confirmDelete) return;
 
       try {
-        const response = await fetch(`http://10.0.2.2:8080/asistencias/${id}`, {
+        const response = await fetch(`http://10.0.2.2:8080/asistencias/${this.asistenciaSeleccionada.id}`, {
           method: 'DELETE',
         });
 
         if (response.ok) {
           alert('Asistencia eliminada');
-          this.loadData(); // Recargar la lista de asistencias
+          this.loadData();
         } else {
           alert('Error al eliminar la asistencia');
         }
@@ -158,15 +151,44 @@ export default {
 </script>
 
 <style scoped>
-  StackLayout {
-    padding: 16px;
-  }
+/* Contenedor principal */
+.list-container {
+  margin: 16px 0;
+  height: 400px;
+}
 
-  Button {
-    margin-top: 20px;
-  }
+.list-item {
+  padding: 16px;
+  background-color: white;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
 
-  ListView {
-    height: auto;
-  }
+.list-item-text {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+/* Grupo de botones en la parte inferior */
+.button-group {
+  padding: 16px;
+  background-color: #f5f5f5;
+  justify-content: space-between;
+}
+
+.primary-button {
+  background-color: #1976d2;
+  color: white;
+}
+
+.secondary-button {
+  background-color: #ff9800;
+  color: white;
+}
+
+.delete-button {
+  background-color: #f44336;
+  color: white;
+}
 </style>
